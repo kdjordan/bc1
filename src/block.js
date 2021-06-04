@@ -16,7 +16,7 @@ class Block {
 
     // Constructor - argument data will be the object containing the transaction data
 	constructor(data){
-		this.hash = null;                                           // Hash of the block
+        this.hash = null;                                           // Hash of the block
 		this.height = 0;                                            // Block Height (consecutive number of each block)
 		this.body = Buffer(JSON.stringify(data)).toString('hex');   // Will contain the transactions stored in the block, by default it will encode the data
 		this.time = 0;                                              // Timestamp for the Block creation
@@ -37,15 +37,20 @@ class Block {
      */
     validate() {
         let self = this;
+        console.log('self', self)
         return new Promise((resolve, reject) => {
             // Save in auxiliary variable the current block hash
-            let testHash = this.hash                            
+            let ogHash = self.hash                            
             // Recalculate the hash of the Block
+            let regenHash = SHA256(JSON.stringify(self)).toString()
             // Comparing if the hashes changed
             // Returning the Block is not valid
-            
-            // Returning the Block is valid
-
+            if (regenHash !== ogHash) {
+                reject()
+            } else {
+                // Returning the Block is valid
+                resolve()
+            }
         });
     }
 
@@ -60,10 +65,20 @@ class Block {
      */
     getBData() {
         // Getting the encoded data saved in the Block
+        console.log('in getBdata this', this)
+        let blockString = JSON.parse(this.data)
         // Decoding the data to retrieve the JSON representation of the object
+        let blockData = hex2ascii(blockString)
+        console.log('in getBdata blockData', blockData)
         // Parse the data to an object to be retrieve.
-
+        //TODO
         // Resolve with the data if the object isn't the Genesis block
+        if(this.height != 0) {
+            resolve(blockData)
+        } else {
+            resolve()
+        }
+        reject()
 
     }
 

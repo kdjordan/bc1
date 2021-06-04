@@ -37,7 +37,6 @@ class Blockchain {
         if( this.height === -1){
             let block = new BlockClass.Block({data: 'Genesis Block'});
             await this._addBlock(block);
-            console.log(this.chain)
         }
     }
 
@@ -65,15 +64,13 @@ class Blockchain {
     _addBlock(block) {
         let self = this;
         return new Promise(async (resolve, reject) => {
-            if (self.height === -1) {
+            if(self.height === -1){
                 self.height++
                 block.hash = SHA256(JSON.stringify(block)).toString()
                 block.time = new Date().getTime().toString().slice(0,-3)
                 self.chain.push(block)
-                
-
                 resolve()
-            } else {
+            }else{
                 self.height++
                 block.previousBlockHash = self.chain[self.chain.length-1].hash
                 block.hash = SHA256(JSON.stringify(block)).toString()
@@ -93,10 +90,12 @@ class Blockchain {
      * This is the first step before submit your Block.
      * The method return a Promise that will resolve with the message to be signed
      * @param {*} address 
+     * <WALLET_ADRESS>:${new Date().getTime().toString().slice(0,-3)}:starRegistry`
      */
     requestMessageOwnershipVerification(address) {
         return new Promise((resolve) => {
-            
+            let walletOwner = `${address}:${new Date().getTime().toString().slice(0,-3)}:starRegistry`
+            resolve(walletOwner) 
         });
     }
 
@@ -132,8 +131,14 @@ class Blockchain {
      */
     getBlockByHash(hash) {
         let self = this;
-        return new Promise((resolve, reject) => {
-           
+        return new Promise((resolve, reject) => {   
+           let found = self.chain.filter(b => b.hash === hash)
+           console.log('found', found.length)
+           if(found.length > 0) {
+               resolve(found)
+           } else {
+               resolve(null)
+           }
         });
     }
 
