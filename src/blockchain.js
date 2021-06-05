@@ -123,10 +123,8 @@ class Blockchain {
             let sentTime = parseInt(message.split(':')[1])
             let currentTime = parseInt(new Date().getTime().toString().slice(0, -3));
             if((sentTime - currentTime > (5 * 60 * 1000))){
-                console.log('rejecting time')
                 resolve(null)
             } else if ((!bitcoinMessage.verify(message, address, signature))) {
-                console.log('rejecting signature')
                 resolve(null)
             } else {
                 //create new block and add to chain 
