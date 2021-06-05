@@ -11,6 +11,7 @@
 const SHA256 = require('crypto-js/sha256');
 const BlockClass = require('./block.js');
 const bitcoinMessage = require('bitcoinjs-message');
+const hex2ascii = require('hex2ascii');
 
 class Blockchain {
 
@@ -70,7 +71,7 @@ class Blockchain {
                 block.time = new Date().getTime().toString().slice(0,-3)
                 self.chain.push(block)
                 resolve()
-            }else{
+            } else {
                 self.height++
                 block.previousBlockHash = self.chain[self.chain.length-1].hash
                 block.hash = SHA256(JSON.stringify(block)).toString()
@@ -94,8 +95,8 @@ class Blockchain {
      */
     requestMessageOwnershipVerification(address) {
         return new Promise((resolve) => {
-            let walletOwner = `${address}:${new Date().getTime().toString().slice(0,-3)}:starRegistry`
-            resolve(walletOwner) 
+            let message = `${address}:${new Date().getTime().toString().slice(0,-3)}:starRegistry`
+            resolve(message) 
         });
     }
 
@@ -119,7 +120,20 @@ class Blockchain {
     submitStar(address, message, signature, star) {
         let self = this;
         return new Promise(async (resolve, reject) => {
-            
+            let sentTime = parseInt(message.split(':')[1])
+            let currentTime = parseInt(new Date().getTime().toString().slice(0, -3));
+            if((sentTime - currentTime > (5 * 60 * 1000))){
+                console.log('rejecting time')
+                resolve(null)
+            } else if ((!bitcoinMessage.verify(message, address, signature))) {
+                console.log('rejecting signature')
+                resolve(null)
+            } else {
+                //create new block and add to chain 
+                let block = new BlockClass.Block({"message": message, "address": address, "signature": signature, "star": star});
+                await this._addBlock(block)
+                resolve(block)
+            }
         });
     }
 
@@ -133,7 +147,6 @@ class Blockchain {
         let self = this;
         return new Promise((resolve, reject) => {   
            let found = self.chain.filter(b => b.hash === hash)
-           console.log('found', found.length)
            if(found.length > 0) {
                resolve(found)
            } else {
@@ -169,7 +182,23 @@ class Blockchain {
         let self = this;
         let stars = [];
         return new Promise((resolve, reject) => {
-            
+            //remove genesis block
+            let theBlocks = self.chain.slice(1, self.chain.length)
+            //array to hold filtered stars
+            let stars = []
+            if(theBlocks.length > 0) {
+                theBlocks.forEach(b => {
+                    let encodedData = b.body;
+                    let decode = hex2ascii(encodedData);
+                    let data = JSON.parse(decode);
+                    if(data.address === address) {
+                        stars.push({"owner" : data.address, "star": data.star})
+                    }
+                })
+                resolve(stars)
+            } else {
+                resolve(null)
+            }
         });
     }
 
