@@ -34,7 +34,6 @@ class Blockchain {
      * Passing as a data `{data: 'Genesis Block'}`
      */
     async initializeChain() {
-        console.log('initailize chaiin')
         if( this.height === -1){
             let block = new BlockClass.Block({data: 'Genesis Block'});
             await this._addBlock(block);
@@ -64,13 +63,11 @@ class Blockchain {
      */
     _addBlock(block) {
         let self = this;
-        // console.log('adding block', self)
         return new Promise(async (resolve, reject) => {
             if(self.height === -1){
                 self.height++
                 block.time = new Date().getTime().toString().slice(0,-3)
                 block.hash = SHA256(JSON.stringify(block)).toString()
-                console.log('adding block__________', block)
                 self.chain.push(block)
                 resolve()
             } else {
@@ -186,7 +183,6 @@ class Blockchain {
      */
      getStarsByWalletAddress (address) {
         let self = this;
-        console.log('getting blockss by address')
         return new Promise(async (resolve, reject) => {
             let stars = []
             for (const b of self.chain) {
