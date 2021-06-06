@@ -11,7 +11,6 @@
 const SHA256 = require('crypto-js/sha256');
 const BlockClass = require('./block.js');
 const bitcoinMessage = require('bitcoinjs-message');
-const hex2ascii = require('hex2ascii');
 
 class Blockchain {
 
@@ -35,6 +34,7 @@ class Blockchain {
      * Passing as a data `{data: 'Genesis Block'}`
      */
     async initializeChain() {
+        console.log('initailize chaiin')
         if( this.height === -1){
             let block = new BlockClass.Block({data: 'Genesis Block'});
             await this._addBlock(block);
@@ -64,19 +64,21 @@ class Blockchain {
      */
     _addBlock(block) {
         let self = this;
+        // console.log('adding block', self)
         return new Promise(async (resolve, reject) => {
             if(self.height === -1){
                 self.height++
-                block.hash = SHA256(JSON.stringify(block)).toString()
                 block.time = new Date().getTime().toString().slice(0,-3)
+                block.hash = SHA256(JSON.stringify(block)).toString()
+                console.log('adding block__________', block)
                 self.chain.push(block)
                 resolve()
             } else {
                 self.height++
                 block.previousBlockHash = self.chain[self.chain.length-1].hash
-                block.hash = SHA256(JSON.stringify(block)).toString()
                 block.height = self.chain[self.chain.length-1].height + 1
                 block.time = new Date().getTime().toString().slice(0,-3)
+                block.hash = SHA256(JSON.stringify(block)).toString()
                 self.chain.push(block)
                 resolve()
             }
@@ -117,7 +119,7 @@ class Blockchain {
      * @param {*} signature 
      * @param {*} star 
      */
-    submitStar(address, message, signature, star) {
+    async submitStar(address, message, signature, star) {       
         let self = this;
         return new Promise(async (resolve, reject) => {
             let sentTime = parseInt(message.split(':')[1])
@@ -127,10 +129,16 @@ class Blockchain {
             } else if ((!bitcoinMessage.verify(message, address, signature))) {
                 resolve(null)
             } else {
-                //create new block and add to chain 
-                let block = new BlockClass.Block({"message": message, "address": address, "signature": signature, "star": star});
-                await this._addBlock(block)
-                resolve(block)
+                //validate chain before adding block
+                let result = await this.validateChain()
+                if(result) {
+                    //create new block and add to chain 
+                    let block = new BlockClass.Block({"message": message, "address": address, "signature": signature, "star": star});
+                    await self._addBlock(block)
+                    resolve(block)
+                } else {
+                    resolve(null)
+                }
             }
         });
     }
@@ -176,26 +184,22 @@ class Blockchain {
      * Remember the star should be returned decoded.
      * @param {*} address 
      */
-    getStarsByWalletAddress (address) {
+     getStarsByWalletAddress (address) {
         let self = this;
-        let stars = [];
-        return new Promise((resolve, reject) => {
-            //remove genesis block
-            let theBlocks = self.chain.slice(1, self.chain.length)
-            //array to hold filtered stars
+        console.log('getting blockss by address')
+        return new Promise(async (resolve, reject) => {
             let stars = []
-            if(theBlocks.length > 0) {
-                theBlocks.forEach(b => {
-                    let encodedData = b.body;
-                    let decode = hex2ascii(encodedData);
-                    let data = JSON.parse(decode);
-                    if(data.address === address) {
-                        stars.push({"owner" : data.address, "star": data.star})
-                    }
-                })
-                resolve(stars)
+            for (const b of self.chain) {
+                //call to block method to get block data
+                let result = await b.getBData()
+                if(result !== null && result.address === address) {
+                    stars.push({"owner" : result.address, "star": result.star})
+                }
+            }
+            if(stars.length === 0) {
+                resolve('No Blocks for this Address')
             } else {
-                resolve(null)
+                resolve(stars)
             }
         });
     }
@@ -210,7 +214,22 @@ class Blockchain {
         let self = this;
         let errorLog = [];
         return new Promise(async (resolve, reject) => {
-            
+            //remove genesis block from being checked since it has no previous hash
+            // console.log('calling validate', self.chain)
+            for (const block of self.chain) {
+                // do not verify genesis block
+                if(block.height !== 0) {
+                    let result = await block.validate()
+                    if(result ===  false) {
+                        errorLog.push({"block": block.hash, "valid": "false"})
+                    }
+                }
+            }
+            if(errorLog.length === 0) {
+                resolve(true)
+            } else {
+                resolve(errorLog)
+            }
         });
     }
 
