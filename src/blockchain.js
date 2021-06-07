@@ -227,11 +227,11 @@ class Blockchain {
                 }
                 //if we have any bad blocks - resolve with the error log
                 //else resolve true to validateChain()
-                if(errorLog.length === 0) {
-                    resolve(true)
-                } else {
-                    resolve(errorLog)
-                }
+            }
+            if(errorLog.length === 0) {
+                resolve(true)
+            } else {
+                resolve(errorLog)
             }
         });
     }

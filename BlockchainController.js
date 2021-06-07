@@ -27,7 +27,7 @@ class BlockchainController {
             if(valid === true) {
                 return res.status(200).send("Chain is valid !");
             } else {
-                return res.status(404).send("Chain is NOT valid");
+                return res.status(404).send(valid);
             }
             
         });
