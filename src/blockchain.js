@@ -209,23 +209,19 @@ class Blockchain {
         let self = this;
         let errorLog = [];
         return new Promise(async (resolve, reject) => {
-            console.log('valiating chain')
             //remove genesis block from being checked since it has no previous hash
             for (const [index, block] of self.chain.entries()) {
                 let result
                 // do not verify previousBlockHash on genesis block - only verify block hash with validate()
                 if(block.height === 0) {
-                    // console.log('checking genesis ', block.height)
                     result = await block.validate()
-                    // console.log('validation genesis', result)
                 //verify previousBlockHash and if true verify hash value on block with validate()
                 } else {
                     if(self.chain[index].previousBlockHash === self.chain[index-1].hash) {
                         result = await block.validate()
-                        // console.log('validation', result)
                     } 
                 }
-                //if we have a bad block - add it to error Log array
+                //if we have a bad block - add it to errorLog array
                 if(result ===  false) {
                     errorLog.push({"block": block.hash, "valid": "false"})
                 }
