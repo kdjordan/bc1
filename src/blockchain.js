@@ -69,15 +69,20 @@ class Blockchain {
                 block.time = new Date().getTime().toString().slice(0,-3)
                 block.hash = SHA256(JSON.stringify(block)).toString()
                 self.chain.push(block)
-                resolve()
+                resolve(block)
             } else {
                 self.height++
                 block.previousBlockHash = self.chain[self.chain.length-1].hash
                 block.height = self.chain[self.chain.length-1].height + 1
                 block.time = new Date().getTime().toString().slice(0,-3)
                 block.hash = SHA256(JSON.stringify(block)).toString()
-                self.chain.push(block)
-                resolve()
+                let valid = await this.validateChain()
+                if(valid) {
+                    self.chain.push(block)
+                    resolve(block)
+                } else {
+                    reject()
+                }
             }
             reject()
         });
@@ -121,21 +126,15 @@ class Blockchain {
         return new Promise(async (resolve, reject) => {
             let sentTime = parseInt(message.split(':')[1])
             let currentTime = parseInt(new Date().getTime().toString().slice(0, -3));
-            if((sentTime - currentTime > (5 * 60 * 1000))){
-                resolve(null)
+            if((sentTime - currentTime > (5 * 60))){
+                reject()
             } else if ((!bitcoinMessage.verify(message, address, signature))) {
-                resolve(null)
+                reject()
             } else {
-                //validate chain before adding block
-                let result = await this.validateChain()
-                if(result) {
-                    //create new block and add to chain 
-                    let block = new BlockClass.Block({"message": message, "address": address, "signature": signature, "star": star});
-                    await self._addBlock(block)
-                    resolve(block)
-                } else {
-                    resolve(null)
-                }
+                //create new block and add to chain 
+                let block = new BlockClass.Block({"message": message, "address": address, "signature": signature, "star": star})
+                await self._addBlock(block)
+                resolve(block)
             }
         });
     }
@@ -210,21 +209,33 @@ class Blockchain {
         let self = this;
         let errorLog = [];
         return new Promise(async (resolve, reject) => {
+            console.log('valiating chain')
             //remove genesis block from being checked since it has no previous hash
-            // console.log('calling validate', self.chain)
-            for (const block of self.chain) {
-                // do not verify genesis block
-                if(block.height !== 0) {
-                    let result = await block.validate()
-                    if(result ===  false) {
-                        errorLog.push({"block": block.hash, "valid": "false"})
-                    }
+            for (const [index, block] of self.chain.entries()) {
+                let result
+                // do not verify previousBlockHash on genesis block - only verify block hash with validate()
+                if(block.height === 0) {
+                    // console.log('checking genesis ', block.height)
+                    result = await block.validate()
+                    // console.log('validation genesis', result)
+                //verify previousBlockHash and if true verify hash value on block with validate()
+                } else {
+                    if(self.chain[index].previousBlockHash === self.chain[index-1].hash) {
+                        result = await block.validate()
+                        // console.log('validation', result)
+                    } 
                 }
-            }
-            if(errorLog.length === 0) {
-                resolve(true)
-            } else {
-                resolve(errorLog)
+                //if we have a bad block - add it to error Log array
+                if(result ===  false) {
+                    errorLog.push({"block": block.hash, "valid": "false"})
+                }
+                //if we have any bad blocks - resolve with the error log
+                //else resolve true to validateChain()
+                if(errorLog.length === 0) {
+                    resolve(true)
+                } else {
+                    resolve(errorLog)
+                }
             }
         });
     }
